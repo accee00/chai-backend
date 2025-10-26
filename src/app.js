@@ -33,5 +33,15 @@ app.use(express.static("public"))
 /// cookieParser: Parses cookies sent by the client and makes them available in req.cookies
 /// Lets you read cookies, set cookies, and use signed cookies.
 app.use(cookieParser())
+
+
+/// Import router
+
+import userRouter from './routes/user.routes.js'
+
+/// route declare
+app.use("/api/v1/users", userRouter)
+
+
 export { app }
 
