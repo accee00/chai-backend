@@ -36,11 +36,29 @@ app.use(cookieParser())
 
 
 /// Import router
-
+import { ApiError } from "./utils/ApiError.js";
 import userRouter from './routes/user.routes.js'
 
 /// route declare
 app.use("/api/v1/users", userRouter)
+
+
+
+
+app.use((err, req, res, next) => {
+    if (err instanceof ApiError) {
+        return res.status(err.statusCode || 500).json({
+            success: err.success,
+            message: err.message,
+            statusCode: err.statusCode,
+        });
+    }
+
+    return res.status(500).json({
+        success: false,
+        message: err.message || "Internal Server Error",
+    });
+});
 
 
 export { app }
