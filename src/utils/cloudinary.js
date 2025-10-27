@@ -1,6 +1,9 @@
 import { v2 as cloudinary } from "cloudinary"
-import e from "express";
 import fs from 'fs'
+import dotenv from "dotenv";
+dotenv.config({
+    path: "./.env"
+})
 
 
 cloudinary.config({
@@ -21,6 +24,7 @@ const uploadOnCloudinary = async (filePath) => {
         console.log(`File uploaded on cloudinary: ${response.url}`)
         return response
     } catch (e) {
+        console.log(`Cloudinary Error ${e}`)
         fs.unlinkSync(filePath) /// remove temp file from server.
         return null
     }
