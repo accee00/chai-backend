@@ -46,6 +46,16 @@ app.use("/api/v1/users", userRouter)
 
 
 app.use((err, req, res, next) => {
+
+    /// Logging error.
+    console.error({
+        timestamp: new Date().toISOString(),
+        error: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method,
+    });
+
     if (err instanceof ApiError) {
         return res.status(err.statusCode || 500).json({
             success: err.success,

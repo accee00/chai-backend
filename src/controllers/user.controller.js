@@ -4,6 +4,25 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { deleteLocalFiles } from "../utils/deleteLocalFiles.js";
+
+const generateAccessAndRefreshToken = async (userId) => {
+    try {
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return { refreshToken, accessToken }
+
+    } catch (error) {
+        throw new ApiError({
+            statusCode: 500,
+            message: "Something went wrong while genetating referesh and access tokens."
+        })
+    }
+}
 const registerUser = asyncHandler(async (req, res) => {
     const { fullName, email, password, userName } = req.body;
 
@@ -66,9 +85,64 @@ const registerUser = asyncHandler(async (req, res) => {
         new ApiResponse({
             statusCode: 201,
             data: createdUser,
-            message: "User validation successful (no user created yet).",
+            message: "User created successfully.",
         })
     );
 });
 
-export { registerUser };
+const logInUser = asyncHandler(async (req, res) => {
+    const { email, password, userName } = req.body
+
+    if (!email && !userName) {
+        throw new ApiError({
+            statusCode: 400,
+            message: "User name or email is required."
+        })
+    }
+
+    /// find user
+    const user = await User.findOne({
+        $or: [{ userName }, { email }]
+    })
+
+    if (!user) {
+        throw new ApiError({
+            statusCode: 404,
+            message: "User does not exist."
+        })
+    }
+    /// to access custom method we can use user that we fetch from db. User does not contain these method.
+    const isPasswordValid = await user.isPasswordCorrect(password)
+
+    if (!isPasswordValid) {
+        throw new ApiError({
+            statusCode: 401,
+            message: "Invalid user credentials."
+        })
+    }
+
+    /// correct password generate access and referesh token
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+
+    /// get updated user after settung refresh token. sending refresh token for mobile.
+    const loggedInUser = await User.findById(user._id).select("-password")
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+
+    return res.status(200)
+        .cookie(
+            "accessToken", accessToken, options,)
+        .cookie("refreshToken", refreshToken, options)
+        .json(new ApiResponse({
+            statusCode: 200,
+            data: {
+                user: loggedInUser,
+            },
+            message: "User logged in successfully."
+        }))
+
+})
+export { registerUser, logInUser };
