@@ -140,9 +140,35 @@ const logInUser = asyncHandler(async (req, res) => {
             statusCode: 200,
             data: {
                 user: loggedInUser,
+                acessToken: accessToken,
             },
             message: "User logged in successfully."
         }))
 
 })
-export { registerUser, logInUser };
+
+const logOutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(req.user._id, {
+        $set: {
+            refreshToken: undefined,
+        }
+    },
+        {
+            /// returns updated value.
+            new: true,
+        }
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+    res.status(200).clearCookie("accessToken", options)
+        .clearCookie("refreshToken")
+        .json(new ApiResponse({
+            statusCode: 200,
+            message: "User logged out."
+        }))
+})
+
+export { registerUser, logInUser, logOutUser };
