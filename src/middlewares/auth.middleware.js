@@ -6,7 +6,8 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     try {
         const token = req.cookies?.accessToken ||
             req.header("Authorization")?.replace("Bearer ", "")
-
+        console.log(`Cookie data: ${req.cookies?.accessToken}`)
+        console.log(`Header data: ${req.header("Authorization")?.replace("Bearer ", "")}`)
         if (!token) {
             throw new ApiError({
                 statusCode: 401,
@@ -14,7 +15,7 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             })
         }
         const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
-        const user = User.findById(decodedToken?._id).select("-password -refreshToken")
+        const user = await User.findById(decodedToken?._id).select("-password -refreshToken")
 
         if (!user) {
             throw new ApiError({
