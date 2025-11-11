@@ -5,6 +5,7 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { deleteLocalFiles } from "../utils/deleteLocalFiles.js";
 import jwt from "jsonwebtoken"
+import { response } from "express";
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -254,5 +255,96 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         message: "Get current user success",
         data: req.user,
     }));
-});
-export { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser };
+})
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path
+
+    if (!avatarLocalPath) {
+        throw new ApiError({
+            statusCode: 400,
+            message: "Avatar file is missing.",
+        });
+    }
+
+    const updatedAvatar = await uploadOnCloudinary(avatarLocalPath)
+    if (!updatedAvatar.url) {
+        throw new ApiError({
+            statusCode: 400,
+            message: "Error while uploading avatar.",
+        });
+    }
+    /// New is set to true to get updated object.
+    const updatedUser = await User.findByIdAndUpdate(req.user?._id,
+        { avatar: updatedAvatar.url },
+        { new: true }
+    ).select("-password")
+
+    return res.status(200).json(new ApiResponse({
+        success: true,
+        message: "Avatar updated successfully",
+        data: updatedUser,
+    }))
+})
+
+const updateAccountDetail = asyncHandler(async (req, res) => {
+    /// kya kya update krna hai wo data lelo req se.
+    const { fullName, email } = req.body
+
+    /// hamesa data lene ke baad check kro kahi empty toh nhi hai
+    if (!fullName || !email) {
+        throw new ApiError({
+            message: !email ? "Email is required" : "Full name is required",
+            status: 400
+        })
+    }
+    /// ab user find kro db mai middleware ko use krke aur update kro.
+    const updatedUser = await User.findByIdAndUpdate(req.user?._id, {
+        $set: {
+            fullName,
+            email,
+        }
+    }, { new: true }
+    ).select('-password')
+
+    return res.status(200).json(new ApiResponse({
+        statusCode: 200,
+        message: "Full name and email updated successfully",
+        data: updatedUser,
+    }))
+})
+const updateUserProfile = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file?.path
+    const { fullName, email } = req.body
+
+    if (!avatarLocalPath || !fullName || !email) {
+        throw new ApiError({
+            status: 400,
+            message: "All feilds are required"
+        })
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    if (!avatar.url) {
+        throw new ApiError({
+            statusCode: 400,
+            message: "Error while updating avatar.",
+        });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user?._id, {
+        $set: {
+            fullName,
+            email,
+            avatar: avatar.url
+        }
+    }, { new: true }
+    ).select("-password")
+
+    return res.status(200).json(new ApiResponse({
+        statusCode: 200,
+        message: "Profile updated successfully",
+        data: updatedUser
+    }))
+})
+export { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser, updateUserAvatar, updateAccountDetail, updateUserProfile };

@@ -28,8 +28,14 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
     } catch (error) {
         throw new ApiError({
             statusCode: 401,
-            message: error?.message || 'Invalid access token.'
+            message: error?.message || "Invalid access token."
         })
     }
 })
 
+// | Concept      | Meaning                                                 |
+// | ------------ | ------------------------------------------------------- |
+// | `req.body`   | Data sent by client in the request body                 |
+// | `req.user`   | Data attached by your backend (e.g. verified user info) |
+// | `req.params` | Data from URL parameters                                |
+// | `req.query`  | Data from query string                                  |
