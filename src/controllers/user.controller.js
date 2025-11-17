@@ -2,10 +2,10 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from '../utils/ApiError.js';
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteOnCloudinary } from "../utils/cloudinary.js";
 import { deleteLocalFiles } from "../utils/deleteLocalFiles.js";
-import jwt from "jsonwebtoken"
-import { response } from "express";
+import mongoose from "mongoose";
+
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
@@ -274,6 +274,8 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
             message: "Error while uploading avatar.",
         });
     }
+    await deleteOnCloudinary(req.user?.avatar)
+
     /// New is set to true to get updated object.
     const updatedUser = await User.findByIdAndUpdate(req.user?._id,
         { avatar: updatedAvatar.url },
@@ -347,4 +349,92 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         data: updatedUser
     }))
 })
-export { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser, updateUserAvatar, updateAccountDetail, updateUserProfile };
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { userName } = req.params
+
+    if (!userName?.trim()) {
+        throw new ApiError({
+            message: "User name is empty.",
+            status: 400,
+        })
+    }
+
+    // aggregate array ke form mai retrun krta hai values ko.
+    const channel = await User.aggregate([
+        // kis data ke basis pe kaam krwna hai
+        {
+            $match: {
+                userName: userName?.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: _id,
+                foreignField: "channel",
+                as: "subscriber"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: _id,
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscriberCount: {
+                    $size: "$subscriber"
+                },
+                channelSubscribedCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: { $in: [req.user?._id, "$subscribers.subcriber"] },
+                        then: true,
+                        else: false,
+                    }
+                }
+            }
+        }, {
+            // jo jo feild return krne hai.
+            $project: {
+                fullName: 1,
+                email: 1,
+                userName: 1,
+                avatar: 1,
+                coverImage: 1,
+                isSubscribed: 1,
+                subscriberCount: 1,
+                channelSubscribedCount: 1,
+            }
+        }
+    ])
+
+    if (!channel?.length) {
+        throw new ApiError({
+            statusCode: 400,
+            message: "Channel does not exist."
+        })
+    }
+    return res.status(200).json(new ApiResponse({
+        statusCode: 200,
+        message: "User profile fetch success.",
+        data: channel[0]
+    }))
+})
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user?._id)
+            }
+        }
+    ])
+})
+export { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser, updateUserAvatar, updateAccountDetail, updateUserProfile, getUserChannelProfile, getWatchHistory };

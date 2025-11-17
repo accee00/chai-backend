@@ -25,9 +25,39 @@ const uploadOnCloudinary = async (filePath) => {
         return response
     } catch (e) {
         console.log(`Cloudinary Error ${e}`)
-        fs.unlinkSync(filePath) /// remove temp file from server.
+        fs.unlinkSync(filePath)
         return null
     }
 }
 
-export { uploadOnCloudinary }
+function getPublicIdFromUrl(url) {
+    if (!url) return null;
+
+    const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+    if (match && match[1]) {
+        return match[1];
+    }
+    return null;
+}
+const deleteOnCloudinary = async (imageUrlOrPublicId) => {
+    try {
+        if (!imageUrlOrPublicId) return null;
+
+        const publicId = getPublicIdFromUrl(imageUrlOrPublicId)
+        const response = await cloudinary.uploader.destroy(publicId, {
+            resource_type: "image",
+        });
+
+        if (response.result === "ok") {
+            console.log("Deleted successfully");
+            return true
+        } else {
+            console.log("Delete failed or file not found:", response.result);
+            return false
+        }
+    } catch (e) {
+        console.error("Cloudinary Delete Error:", e);
+        return null;
+    }
+};
+export { uploadOnCloudinary, deleteOnCloudinary }
