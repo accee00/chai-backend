@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser, updateUserAvatar, updateAccountDetail, updateUserProfile } from "../controllers/user.controller.js";
+import { registerUser, logInUser, logOutUser, refreshAccessTokens, changePassword, getCurrentUser, updateUserAvatar, updateAccountDetail, updateUserProfile, getUserChannelProfile, getWatchHistory } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 
@@ -28,10 +28,13 @@ router.route("/change-password").post(verifyJWT, changePassword)
 
 router.route("/get-user").get(verifyJWT, getCurrentUser)
 
-router.route("/update-avatar").put(verifyJWT, upload.single("avatar"), updateUserAvatar)
+router.route("/update-avatar").patch(verifyJWT, upload.single("avatar"), updateUserAvatar)
 
-router.route("/update-detail").put(verifyJWT, updateAccountDetail)
+///Patch - Body (send only what you want to change)
+router.route("/update-detail").patch(verifyJWT, updateAccountDetail)
 
-router.route("/update-profile").put(verifyJWT, upload.single("avatar"), updateUserProfile)
+router.route("/update-profile").patch(verifyJWT, upload.single("avatar"), updateUserProfile)
+
+router.route("/get-channel-profile/:username").get(verifyJWT, getUserChannelProfile);
 
 export default router
