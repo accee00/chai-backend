@@ -151,8 +151,8 @@ const logInUser = asyncHandler(async (req, res) => {
 
 const logOutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
-        $set: {
-            refreshToken: undefined,
+        $unset: {
+            refreshToken: 1,
         }
     },
         {
@@ -351,9 +351,10 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 })
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-    const { userName } = req.params
 
-    if (!userName?.trim()) {
+    const { username } = req.params
+
+    if (!username?.trim()) {
         throw new ApiError({
             message: "User name is empty.",
             status: 400,
@@ -365,21 +366,21 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         // kis data ke basis pe kaam krwna hai
         {
             $match: {
-                userName: userName?.toLowerCase()
+                userName: username?.toLowerCase()
             }
         },
         {
             $lookup: {
                 from: "subscriptions",
-                localField: _id,
+                localField: "_id",
                 foreignField: "channel",
-                as: "subscriber"
+                as: "subscribers"
             }
         },
         {
             $lookup: {
                 from: "subscriptions",
-                localField: _id,
+                localField: "_id",
                 foreignField: "subscriber",
                 as: "subscribedTo"
             }
@@ -387,14 +388,14 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 subscriberCount: {
-                    $size: "$subscriber"
+                    $size: "$subscribers"
                 },
                 channelSubscribedCount: {
                     $size: "$subscribedTo"
                 },
                 isSubscribed: {
                     $cond: {
-                        if: { $in: [req.user?._id, "$subscribers.subcriber"] },
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
                         then: true,
                         else: false,
                     }
